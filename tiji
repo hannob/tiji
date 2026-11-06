@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+import argparse
+import datetime
+import os
+import pathlib
+import shutil
+
+import jinja2
+
+ap = argparse.ArgumentParser()
+ap.add_argument("pagedir")
+args = ap.parse_args()
+
+e = jinja2.Environment(loader=jinja2.FileSystemLoader(f"{args.pagedir}/templates"), autoescape=True)
+
+if os.path.exists("out"):
+    now = datetime.datetime.now(datetime.UTC).isoformat()
+    os.rename("out", f"out-{now}.bak")
+
+shutil.copytree(f"{args.pagedir}/static", "out")
+
+for fn in os.listdir(f"{args.pagedir}/templates/"):
+    if not fn.endswith(".html"):
+        continue
+    template = e.get_template(fn)
+    pathlib.Path(f"out/{fn}").write_text(template.render())
