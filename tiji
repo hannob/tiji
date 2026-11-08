@@ -6,11 +6,14 @@ import os
 import pathlib
 import shutil
 
+import html5lib
 import jinja2
 
 ap = argparse.ArgumentParser()
 ap.add_argument("pagedir")
 args = ap.parse_args()
+
+htmlparser = html5lib.HTMLParser(strict=True)
 
 e = jinja2.Environment(loader=jinja2.FileSystemLoader(f"{args.pagedir}/templates"), autoescape=True)
 
@@ -20,8 +23,22 @@ if os.path.exists("out"):
 
 shutil.copytree(f"{args.pagedir}/static", "out")
 
-for fn in os.listdir(f"{args.pagedir}/templates/"):
-    if not fn.endswith(".html"):
-        continue
-    template = e.get_template(fn)
-    pathlib.Path(f"out/{fn}").write_text(template.render())
+for root, _, files in os.walk(f"{args.pagedir}/templates/"):
+    for fn in files:
+        if not fn.endswith(".html"):
+            continue
+        fp = os.path.join(root, fn)
+        fp = fp.split(f"{args.pagedir}/templates/")[1]
+
+        template = e.get_template(fp)
+        html = template.render()
+
+        # parse with html5lib to avoid basic HTML mistakes
+        try:
+            htmlparser.parse(html)
+        except html5lib.html5parser.ParseError as err:
+            print(f"HTML Error with {fp}")
+            print(err)
+            print(htmlparser.errors)
+
+        pathlib.Path(f"out/{fp}").write_text(html)
